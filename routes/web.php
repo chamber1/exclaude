@@ -31,4 +31,5 @@ Route::controller(App\Http\Controllers\WebcamController::class)->prefix('webcam'
 Route::controller(App\Http\Controllers\ParserController::class)->prefix('parser')->name('parser.')->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/', 'download')->middleware('throttle:10,1')->name('download');
+    Route::get('/files/{token}', 'file')->name('file');
 });

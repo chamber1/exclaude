@@ -6,7 +6,7 @@
 
 Приложение на Laravel 10 (PHP 8.1). Основа — заготовка аутентификации `laravel/ui` на Bootstrap (вход, регистрация, сброс пароля, подтверждение email) и Sanctum. В приложении две функции, обе только для вошедших пользователей:
 - **страница веб-камеры** (`/webcam`): показывает изображение с камеры пользователя, сохраняет снимки и выводит их в галерее;
-- **парсер звука с YouTube** (`/parser`): скачивает звуковую дорожку ролика в mp3/m4a через `yt-dlp` внутри php_fpm.
+- **парсер YouTube** (`/parser`): скачивает звук ролика (mp3/m4a, с выбором битрейта) или видео (mp4, с выбором качества) через `yt-dlp` внутри php_fpm.
 
 Поведение функций, текущее состояние проекта и открытые задачи описаны в `spec.md`. Обновляйте `spec.md` при любом изменении функции или её поведения.
 
@@ -25,7 +25,7 @@ Dockerfile **не** выполняет `composer install`, так что `vendor
 
 Настройки БД: compose передаёт в php_fpm `DB_HOST=mysql`, и это перекрывает `DB_HOST=127.0.0.1` из `.env`. `DB_DATABASE`, `DB_USERNAME` и `DB_PASSWORD` берутся из `.env` и общие с сервисом mysql (`MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`). Пользователь MySQL создаётся только при первой инициализации volume `mysql_data`, поэтому смена `DB_USERNAME` в `.env` для существующей базы требует создать пользователя вручную. Команды artisan запускайте внутри контейнера, на хосте — только если там есть свой MySQL.
 
-`docker exec` выполняется от root, а PHP-FPM работает от `www-data`. Команды artisan, которые пишут в `storage/` или `bootstrap/cache` (например `view:cache`, `config:cache`), оставляют там файлы root, и сайт падает с «Permission denied». Запускайте такие команды как `docker exec -u www-data php_fpm ...` либо после них выполните `docker exec php_fpm chown -R www-data:www-data storage bootstrap/cache`.
+`docker exec` выполняется от root, а PHP-FPM работает от `www-data`. Команды artisan, которые пишут в `storage/` или `bootstrap/cache` (например `view:cache`, `config:cache`), оставляют там файлы root, и сайт падает с «Permission denied». Запускайте такие команды как `docker exec -u www-data php_fpm ...` (для `tinker` добавьте `-e HOME=/tmp`, иначе psysh не сможет создать `/var/www/.config`) либо после них выполните `docker exec php_fpm chown -R www-data:www-data storage bootstrap/cache`.
 
 Хост — Windows:
 - Node и npm не установлены, поэтому `npm run dev/build` там сразу не заработают (текущий `public/build` собран раньше). Для разовых проверок JS используйте `docker run --rm node:20-alpine`.
@@ -69,9 +69,13 @@ docker exec php_fpm vendor/bin/phpunit tests/Feature/ExampleTest.php
   - `<video>` — скрытый источник. Цикл `requestAnimationFrame` рисует каждый кадр на видимом `<canvas>`, а снимок делается через `canvas.toBlob()`. Поэтому всё нарисованное (например маска клоуна) попадает в сохранённое изображение.
   - Маска клоуна: MediaPipe Face Landmarker динамически импортируется с jsDelivr (версия зафиксирована в `MEDIAPIPE_URL`) при первом включении переключателя. `drawClownMask()` рисует маску по индексам 468-точечной сетки лица и поворачивает её по оси подбородок→лоб.
 - **Парсер** (`ParserController`, `parser.blade.php`, без модели и таблицы):
-  - `download()` запускает `yt-dlp` **синхронно** через фасад `Process` и отдаёт файл с `deleteFileAfterSend()`. JS страницы получает его как blob.
+  - `download()` запускает `yt-dlp` **синхронно** (общий метод `runYtDlp()`, через фасад `Process`).
+    - Звук сразу отдаётся с `deleteFileAfterSend()`, и JS получает его как blob.
+    - Видео может весить гигабайты, поэтому в blob его не берут. `download()` возвращает JSON со ссылкой на `parser.file`; данные ссылки лежат в кеше `parser:file:<uuid>` (владелец, путь, имя, TTL 1 час). `file()` отдаёт файл один раз и только владельцу.
+  - Видео: `-S "res:<h>,vcodec:h264,acodec:aac"` — сначала разрешение, затем H.264/AAC. Не ставьте `vcodec` впереди `res`: тогда H.264 начнёт перевешивать разрешение.
   - Ссылка пользователя сводится к 11-символьному ID ролика в `extractVideoId()`. В командную строку (после `--`) попадает только `https://www.youtube.com/watch?v=<id>`. Это нужно сохранить.
   - Битрейт (`best`/`320`…`64`) передаётся как `--audio-quality` (`0` или `192K` → `-b:a 192k`). Из AAC-источника в m4a yt-dlp просто копирует дорожку и игнорирует битрейт, поэтому `formatSelector()` для m4a с числовым битрейтом выбирает Opus-дорожку, чтобы шло перекодирование.
+  - Всегда передавайте `--no-mtime`. Без него yt-dlp ставит файлу дату загрузки ролика, и `removeStaleFiles()` (удаляет файлы старше часа) может удалить его во время соседнего запроса.
   - php-fpm запускается с очищенным окружением, поэтому процессу явно передаются `PATH`, `HOME` и `DENO_DIR`. Без `PATH` yt-dlp не найдёт ffmpeg и deno.
   - Таймауты вложены друг в друга: yt-dlp 600 с, затем `set_time_limit` 660 с, затем nginx `fastcgi_read_timeout 660s`. Меняйте их вместе.
   - Ошибки yt-dlp переводятся в русские сообщения поиском подстроки в `errorMessage()`. Неизвестные ошибки пишутся в лог как `yt-dlp failed`.
