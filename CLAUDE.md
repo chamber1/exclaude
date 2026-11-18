@@ -23,7 +23,7 @@
 
 Dockerfile **не** выполняет `composer install`, так что `vendor/` должен быть на хосте.
 
-Настройки БД: compose передаёт в php_fpm `DB_HOST=mysql` и пользователя `user`, и это перекрывает `DB_HOST=127.0.0.1` из `.env`. `DB_DATABASE` и `DB_PASSWORD` берутся из `.env` и общие с сервисом mysql. Команды artisan запускайте внутри контейнера, на хосте — только если там есть свой MySQL.
+Настройки БД: compose передаёт в php_fpm `DB_HOST=mysql`, и это перекрывает `DB_HOST=127.0.0.1` из `.env`. `DB_DATABASE`, `DB_USERNAME` и `DB_PASSWORD` берутся из `.env` и общие с сервисом mysql (`MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`). Пользователь MySQL создаётся только при первой инициализации volume `mysql_data`, поэтому смена `DB_USERNAME` в `.env` для существующей базы требует создать пользователя вручную. Команды artisan запускайте внутри контейнера, на хосте — только если там есть свой MySQL.
 
 `docker exec` выполняется от root, а PHP-FPM работает от `www-data`. Команды artisan, которые пишут в `storage/` или `bootstrap/cache` (например `view:cache`, `config:cache`), оставляют там файлы root, и сайт падает с «Permission denied». Запускайте такие команды как `docker exec -u www-data php_fpm ...` либо после них выполните `docker exec php_fpm chown -R www-data:www-data storage bootstrap/cache`.
 
