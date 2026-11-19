@@ -8,14 +8,14 @@ use PHPUnit\Framework\TestCase;
 
 class ProgressTrackerTest extends TestCase
 {
-    private static function progress(int $done, ?int $total, int $estimate = null): string
+    private static function progress(int $done, ?int $total, ?int $estimate = null): string
     {
         return YtDlp::PROGRESS_MARKER.$done.':'.($total ?? 'NA').':'.($estimate ?? 'NA')."\n";
     }
 
     public function test_single_stream_maps_to_0_90_then_95_on_post_processing(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
 
         $this->assertNull($t->feed(YtDlp::FORMAT_MARKER."140\n"));
         $t->feed("[download] Destination: /x/media.webm\n");
@@ -26,7 +26,7 @@ class ProgressTrackerTest extends TestCase
 
     public function test_two_streams_share_the_range(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
         $t->feed(YtDlp::FORMAT_MARKER."137+140\n", 'out');
 
         $t->feed("[download] Destination: /x/media.f137.mp4\n", 'err');
@@ -39,7 +39,7 @@ class ProgressTrackerTest extends TestCase
 
     public function test_estimate_is_used_when_total_is_unknown(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
         $t->feed("[download] Destination: /x/a\n");
 
         $this->assertSame(22, $t->feed(self::progress(25, null, 100)));
@@ -48,7 +48,7 @@ class ProgressTrackerTest extends TestCase
 
     public function test_never_goes_backwards_and_never_reaches_100(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
         $t->feed("[download] Destination: /x/a\n");
         $t->feed(self::progress(80, 100));
 
@@ -62,7 +62,7 @@ class ProgressTrackerTest extends TestCase
 
     public function test_lines_split_across_chunks_and_streams(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
         $t->feed("[download] Destination: /x/a\n", 'err');
 
         $this->assertNull($t->feed(substr(self::progress(50, 100), 0, 20), 'err'));
@@ -73,7 +73,7 @@ class ProgressTrackerTest extends TestCase
 
     public function test_windows_line_endings_and_noise_are_ignored(): void
     {
-        $t = new ProgressTracker();
+        $t = new ProgressTracker;
         $t->feed("[youtube] jNQXAC9IVRw: Downloading webpage\r\n[download] Destination: a\r\n");
 
         $this->assertSame(9, $t->feed(rtrim(self::progress(10, 100))."\r\n"));

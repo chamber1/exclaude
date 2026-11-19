@@ -19,9 +19,7 @@ final class DownloadCleaner
     /** A file handed to nginx (X-Accel-Redirect) is kept this long after the download started. */
     public const DELIVERY_GRACE = 1800;
 
-    public function __construct(private readonly DownloadService $downloads)
-    {
-    }
+    public function __construct(private readonly DownloadService $downloads) {}
 
     /** @return array{expired: int, stuck: int, orphans: int, pruned: int} */
     public function run(): array

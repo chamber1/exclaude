@@ -80,7 +80,7 @@ final class YtDlp
             $media->url(),
         ];
 
-        $tracker = new ProgressTracker();
+        $tracker = new ProgressTracker;
         $context = ['task' => $task->uuid, 'media' => $media->id];
         $what = $task->type === 'video' ? 'видео' : 'звук';
 

@@ -8,14 +8,14 @@
 # The same image runs PHP-FPM (app), the queue worker and the scheduler; only the command differs.
 
 # ---------------------------------------------------------------------------
-# base: PHP 8.1 (Ubuntu 22.04 packages) + yt-dlp + ffmpeg + deno
+# base: PHP 8.5 + yt-dlp + ffmpeg + deno
 # ---------------------------------------------------------------------------
-FROM phpdockerio/php:8.1-fpm AS base
+FROM phpdockerio/php:8.5-fpm AS base
 WORKDIR /var/www/html
 
 RUN apt-get update \
     && apt-get -y --no-install-recommends install \
-        imagemagick php8.1-imagick php8.1-gd php8.1-mysql php8.1-redis php8.1-bcmath php8.1-gmp php8.1-zmq php8.1-zip \
+        imagemagick php8.5-imagick php8.5-gd php8.5-mysql php8.5-redis php8.5-bcmath php8.5-gmp php8.5-zmq php8.5-zip \
         ffmpeg unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
@@ -34,10 +34,10 @@ RUN curl -fsSL -o /usr/local/bin/yt-dlp "https://github.com/yt-dlp/yt-dlp/releas
     && chmod 0755 /usr/local/bin/deno \
     && rm /tmp/deno.zip
 
-COPY docker/php_fpm/zz-pool.conf /etc/php/8.1/fpm/pool.d/zz-pool.conf
+COPY docker/php_fpm/zz-pool.conf /etc/php/8.5/fpm/pool.d/zz-pool.conf
 
 EXPOSE 9000
-CMD ["php-fpm8.1", "-F"]
+CMD ["php-fpm8.5", "-F"]
 
 # ---------------------------------------------------------------------------
 # dev: code, vendor/ and php.ini are bind-mounted by docker-compose.yml
@@ -72,8 +72,8 @@ RUN npm run build
 # prod: the application image
 # ---------------------------------------------------------------------------
 FROM base AS prod
-COPY docker/production/php.ini /etc/php/8.1/fpm/conf.d/99-overrides.ini
-COPY docker/production/php.ini /etc/php/8.1/cli/conf.d/99-overrides.ini
+COPY docker/production/php.ini /etc/php/8.5/fpm/conf.d/99-overrides.ini
+COPY docker/production/php.ini /etc/php/8.5/cli/conf.d/99-overrides.ini
 COPY --from=vendor /var/www/html /var/www/html
 COPY --from=assets /app/public/build /var/www/html/public/build
 

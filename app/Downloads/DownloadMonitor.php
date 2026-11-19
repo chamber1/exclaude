@@ -23,7 +23,7 @@ final class DownloadMonitor
 
     private const WORKERS_KEY = 'downloads:monitor:workers';
 
-    public static function workerKey(string $host = null): string
+    public static function workerKey(?string $host = null): string
     {
         return 'downloads:monitor:worker:'.($host ?? gethostname());
     }
@@ -55,7 +55,7 @@ final class DownloadMonitor
         Cache::put('downloads:monitor:scheduler', time(), 3600);
     }
 
-    public function workerHealthy(string $host = null): bool
+    public function workerHealthy(?string $host = null): bool
     {
         $state = Cache::get(self::workerKey($host));
 
@@ -80,10 +80,13 @@ final class DownloadMonitor
         }
 
         try {
-            // A non-numeric value: Redis returns numbers as strings.
-            $token = 'ok-'.mt_rand();
-            Cache::put('downloads:monitor:probe', $token, 10);
-            $checks['cache'] = Cache::get('downloads:monitor:probe') === $token;
+            // A key per probe: concurrent health checks (nginx, Docker, monitoring) must not overwrite
+            // each other. A non-numeric value: Redis returns numbers as strings.
+            $token = 'ok-'.bin2hex(random_bytes(8));
+            $key = 'downloads:monitor:probe:'.$token;
+            Cache::put($key, $token, 10);
+            $checks['cache'] = Cache::get($key) === $token;
+            Cache::forget($key);
         } catch (Throwable) {
             $checks['cache'] = false;
         }
@@ -111,7 +114,7 @@ final class DownloadMonitor
         return [
             'tasks' => DownloadTask::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
             'oldest_pending_seconds' => ($oldest = DownloadTask::query()->where('status', DownloadStatus::Pending)->min('created_at'))
-                ? now()->diffInSeconds($oldest) : null,
+                ? (int) abs(now()->diffInSeconds($oldest)) : null,
             'queue' => [
                 'name' => $queue,
                 'connection' => config('queue.default'),

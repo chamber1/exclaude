@@ -94,7 +94,7 @@
 
 ## 4. Решения, принятые сознательно
 
-- **Laravel и PHP не обновляются в рамках этих работ.** Обновление требует смены базового образа (PHP ≥ 8.2) и двух мажорных версий Laravel. Это отдельная задача с отдельным тестированием; план — в `docs/UPGRADE.md`.
+- **Laravel и PHP обновлены отдельным этапом**, после перевода загрузок на очередь и покрытия тестами: так причину любой поломки можно отнести к одному изменению. Структура приложения (Kernel-классы) сохранена, Laravel 13 её поддерживает. Подробности — `docs/UPGRADE.md`.
 - **Новые Composer-зависимости не добавляются**: расширение `phpredis` уже есть в образе, `Process::fake()` и RateLimiter входят в Laravel 10.
 - **Horizon не добавляется** (лишняя зависимость при одной очереди). Мониторинг — `downloads:status` и heartbeat.
 - **`X-Accel-Redirect` для отдачи файлов** (пересмотрено в ходе работ, A7 закрыт полностью): PHP проверяет подпись и владельца, помечает задачу скачанной и передаёт отдачу nginx. Так как PHP не знает, когда nginx закончит отдачу, файл удаляет `downloads:cleanup` через `DownloadCleaner::DELIVERY_GRACE` (30 мин). Без nginx (пустой `DOWNLOADS_X_ACCEL_PREFIX`) файл отдаёт PHP и удаляет сразу.
@@ -122,9 +122,10 @@
 | S9 | ✅ | `client_hash` (HMAC IP); канал `downloads` без сырого IP |
 | S10 | ✅ | `TRUSTED_PROXIES` → `config('app.trusted_proxies')` |
 | S11 | ✅ | `server_tokens off`, заголовки безопасности (dev и prod), HSTS в prod |
-| V1, V2 | ⏳ | Не обновлено сознательно; план — `docs/UPGRADE.md` |
+| V1, V2 | ✅ | PHP 8.5 (`phpdockerio/php:8.5-fpm`, Ubuntu 24.04), Laravel 13, PHPUnit 13 — отдельным этапом после очереди; что изменено — `docs/UPGRADE.md` |
+| V3 | ✅ | ffmpeg 6.1 (Ubuntu 24.04) вместе с базовым образом |
 | V4 | ✅ | Версия закреплена; процедура обновления — `docs/DEPLOYMENT.md` |
-| Q1 | ✅ | `laravel_test` (`force="true"` в `phpunit.xml`), 167 тестов |
+| Q1 | ✅ | `laravel_test` (`force="true"` в `phpunit.xml`), 166 тестов |
 | Q2 | ✅ | `scheduler`, `queue-worker`, healthcheck всех сервисов, `/up`, `downloads:status`, `downloads:health` |
 | Q3 | ✅ | `docker-compose.prod.yml`, цели `prod`/`web`, `docker/production/*`, `docs/DEPLOYMENT.md` |
 | Q4 | ✅ | Гости с лимитами, `users.plan`/`plan_expires_at` (free/premium) |

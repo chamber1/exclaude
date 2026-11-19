@@ -30,7 +30,7 @@ class UrlParserTest extends TestCase
     #[DataProvider('validLinks')]
     public function test_valid_links_become_canonical_urls(string $link): void
     {
-        $media = (new UrlParser())->parse($link);
+        $media = (new UrlParser)->parse($link);
 
         $this->assertSame('youtube', $media->platform->name());
         $this->assertSame('jNQXAC9IVRw', $media->id);
@@ -74,7 +74,7 @@ class UrlParserTest extends TestCase
     public function test_invalid_links_are_rejected(string $link, string $reason): void
     {
         try {
-            (new UrlParser())->parse($link);
+            (new UrlParser)->parse($link);
             $this->fail('Accepted: '.$link);
         } catch (DownloadRejected $e) {
             $this->assertSame($reason, $e->reason);
@@ -84,7 +84,7 @@ class UrlParserTest extends TestCase
 
     public function test_reference_rebuilds_a_stored_task(): void
     {
-        $media = (new UrlParser())->reference('youtube', 'jNQXAC9IVRw');
+        $media = (new UrlParser)->reference('youtube', 'jNQXAC9IVRw');
 
         $this->assertSame('https://www.youtube.com/watch?v=jNQXAC9IVRw', $media->url());
     }
@@ -93,6 +93,6 @@ class UrlParserTest extends TestCase
     {
         $this->expectException(DownloadRejected::class);
 
-        (new UrlParser())->reference('vimeo', '123');
+        (new UrlParser)->reference('vimeo', '123');
     }
 }

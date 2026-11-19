@@ -30,7 +30,7 @@ class DownloadJobTest extends TestCase
     }
 
     /** Records commands, then behaves like the default fake (or $then). */
-    private function recordCommands(\Closure $then = null): void
+    private function recordCommands(?\Closure $then = null): void
     {
         $this->fakeYtDlp(download: function (array $command) use ($then) {
             $this->commands[] = $command;

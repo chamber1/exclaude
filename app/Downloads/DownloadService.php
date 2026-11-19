@@ -26,8 +26,7 @@ final class DownloadService
         private readonly UrlParser $parser,
         private readonly NetworkGuard $guard,
         private readonly YtDlp $ytDlp,
-    ) {
-    }
+    ) {}
 
     /**
      * Validates the link and returns the video's public metadata (cached per video).
@@ -180,7 +179,7 @@ final class DownloadService
         ]);
         $this->log('info', 'task completed', $task, [
             'size' => $task->file_size,
-            'seconds' => $task->started_at?->diffInSeconds($task->completed_at),
+            'seconds' => $task->started_at ? (int) $task->started_at->diffInSeconds($task->completed_at, true) : null,
         ]);
     }
 

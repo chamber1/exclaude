@@ -56,7 +56,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @param  (Closure(list<string>): mixed)|null  $download  receives the command, returns a process result
      */
-    protected function fakeYtDlp(array $json = null, Closure $download = null): void
+    protected function fakeYtDlp(?array $json = null, ?Closure $download = null): void
     {
         $json ??= $this->videoJson();
 

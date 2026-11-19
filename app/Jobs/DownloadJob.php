@@ -21,7 +21,7 @@ use Throwable;
  *    retry_after and DownloadService::process() starts the task over; after $tries attempts failed() runs;
  *  - a task whose job was lost entirely is failed by `downloads:cleanup` (stuck tasks).
  */
-class DownloadJob implements ShouldQueue, ShouldBeUnique
+class DownloadJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;

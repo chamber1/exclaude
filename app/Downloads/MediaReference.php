@@ -10,8 +10,7 @@ final class MediaReference
     public function __construct(
         public readonly Platform $platform,
         public readonly string $id,
-    ) {
-    }
+    ) {}
 
     public function url(): string
     {

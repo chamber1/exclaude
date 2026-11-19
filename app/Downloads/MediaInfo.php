@@ -15,8 +15,7 @@ final class MediaInfo
         public readonly ?string $license,
         public readonly bool $isLive,
         public readonly array $heights,
-    ) {
-    }
+    ) {}
 
     public static function fromYtDlp(array $json): self
     {

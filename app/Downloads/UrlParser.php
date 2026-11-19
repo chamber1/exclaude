@@ -21,9 +21,9 @@ final class UrlParser
     private array $platforms;
 
     /** @param  list<Platform>|null  $platforms */
-    public function __construct(array $platforms = null)
+    public function __construct(?array $platforms = null)
     {
-        $this->platforms = $platforms ?? [new YouTube()];
+        $this->platforms = $platforms ?? [new YouTube];
     }
 
     public function parse(string $input): MediaReference

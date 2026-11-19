@@ -9,8 +9,8 @@ x-app: &app
   image: exclaude-app:dev
   volumes:
     - .:/var/www/html
-    - ./docker/php_fpm/php.ini:/etc/php/8.1/fpm/conf.d/99-overrides.ini:ro
-    - ./docker/php_fpm/php.ini:/etc/php/8.1/cli/conf.d/99-overrides.ini:ro
+    - ./docker/php_fpm/php.ini:/etc/php/8.5/fpm/conf.d/99-overrides.ini:ro
+    - ./docker/php_fpm/php.ini:/etc/php/8.5/cli/conf.d/99-overrides.ini:ro
   environment:
     # Everything else comes from .env (DB_HOST/REDIS_HOST there point to 127.0.0.1 for host tools).
     DB_HOST: mysql

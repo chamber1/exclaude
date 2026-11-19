@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\DownloadController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ParserController;
+use App\Http\Controllers\WebcamController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,9 +23,9 @@ Route::get('/', function () {
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-Route::controller(App\Http\Controllers\WebcamController::class)->prefix('webcam')->name('webcam.')->group(function () {
+Route::controller(WebcamController::class)->prefix('webcam')->name('webcam.')->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/snapshots', 'store')->name('store');
     Route::get('/snapshots/{snapshot}', 'show')->name('show');
@@ -29,10 +33,10 @@ Route::controller(App\Http\Controllers\WebcamController::class)->prefix('webcam'
 });
 
 // Downloads page; open to guests (limits per plan, config/downloads.php).
-Route::get('/parser', [App\Http\Controllers\ParserController::class, 'index'])->name('parser.index');
+Route::get('/parser', [ParserController::class, 'index'])->name('parser.index');
 
 // Download API (queue + status polling), used by the /parser page.
-Route::controller(App\Http\Controllers\DownloadController::class)->prefix('downloads')->name('downloads.')->group(function () {
+Route::controller(DownloadController::class)->prefix('downloads')->name('downloads.')->group(function () {
     Route::get('/', 'index')->middleware('throttle:downloads-status')->name('index');
     Route::post('/inspect', 'inspect')->middleware('throttle:downloads-inspect')->name('inspect');
     Route::post('/', 'store')->middleware('throttle:downloads')->name('store');

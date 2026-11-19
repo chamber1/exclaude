@@ -15,13 +15,13 @@ Laravel-приложение:
 
 | Слой | Технология |
 |---|---|
-| Backend | Laravel 10, PHP 8.1, Sanctum, laravel/ui |
+| Backend | Laravel 13, PHP 8.5, Sanctum 4, laravel/ui 4; тесты — PHPUnit 13 |
 | Frontend | Blade, Bootstrap 5, Sass, Vite, vanilla JS |
 | БД | MySQL 8.0 (тесты — отдельная база `laravel_test`) |
 | Кеш, сессии, очередь, блокировки | Redis 7.4 |
 | Инфраструктура (dev) | Docker Compose: `nginx` (80/443), `app` (PHP-FPM, контейнер `php_fpm`), `queue-worker`, `scheduler`, `mysql` (127.0.0.1:3306), `redis` |
 | Инфраструктура (prod) | `docker-compose.prod.yml`: образы `prod`/`web` из `docker/Dockerfile`, TLS (Let's Encrypt), `certbot` |
-| Инструменты в образе | yt-dlp 2026.10.26, Deno 2.9.8 (версии закреплены, SHA-256 проверяется), ffmpeg 4.4 |
+| Инструменты в образе | yt-dlp 2026.10.26, Deno 2.9.8 (версии закреплены, SHA-256 проверяется), ffmpeg 6.1 (Ubuntu 24.04) |
 
 - Адреса: http://localhost и https://localhost. Для HTTPS используется самоподписанный сертификат, поэтому браузер покажет предупреждение.
 - Тестовый пользователь: `test@test.com` / `password`.
@@ -231,10 +231,11 @@ Laravel-приложение:
 
 ## 5. Известные проблемы и бэклог
 
-- [x] ~~Нет автотестов; `phpunit.xml` указывал на рабочую БД~~ — отдельная база `laravel_test`, 167 тестов.
+- [x] ~~Нет автотестов; `phpunit.xml` указывал на рабочую БД~~ — отдельная база `laravel_test`, 166 тестов.
 - [x] ~~`chmod -R 777`~~, ~~Composer не устанавливался в образе~~, ~~парсер синхронный~~ — исправлено (см. `AUDIT.md`, раздел 5).
-- [ ] PHP 8.1 и Laravel 10 без поддержки безопасности — план `docs/UPGRADE.md`.
-- [ ] Лишняя миграция `password_resets`: Laravel 10 использует `password_reset_tokens`.
+- [x] ~~PHP 8.1 и Laravel 10 без поддержки безопасности~~ — PHP 8.5, Laravel 13 (`docs/UPGRADE.md`).
+- [ ] Лишняя миграция `password_resets`: Laravel 10+ использует `password_reset_tokens`.
+- [ ] Структура приложения осталась от Laravel 10 (Kernel-классы, полные конфиги). Работает в Laravel 13; переход на `bootstrap/app.php` — по желанию (`docs/UPGRADE.md`).
 - [ ] Автотесты веб-камеры покрывают только доступ (вход обязателен), сохранение и удаление снимков не тестируются.
 - [ ] Если открыть https://localhost при запущенном `npm run dev`, браузер заблокирует ресурсы Vite: dev-сервер работает по HTTP. Используйте http://localhost или `npm run build`.
 - [ ] Маске клоуна нужен интернет (jsDelivr и Google Storage). Для работы офлайн библиотеку и модель можно положить в `public/`.

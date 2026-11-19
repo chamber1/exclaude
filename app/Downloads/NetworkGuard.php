@@ -33,7 +33,7 @@ final class NetworkGuard
     private Closure $resolver;
 
     /** @param  (Closure(string): list<string>)|null  $resolver  host => IP addresses (injectable for tests) */
-    public function __construct(Closure $resolver = null)
+    public function __construct(?Closure $resolver = null)
     {
         $this->resolver = $resolver ?? self::dnsResolver(...);
     }

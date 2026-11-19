@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -25,7 +26,7 @@ class DownloadApiTest extends TestCase
         $this->fakeYtDlp();
     }
 
-    private function store(array $data = []): \Illuminate\Testing\TestResponse
+    private function store(array $data = []): TestResponse
     {
         return $this->postJson('/downloads', $data + [
             'url' => self::URL, 'type' => 'audio', 'format' => 'mp3', 'bitrate' => '128',

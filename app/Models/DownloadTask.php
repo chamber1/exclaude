@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -32,10 +33,10 @@ use Illuminate\Support\Facades\Storage;
  * @property ?int $file_size
  * @property ?string $error_code
  * @property ?string $error_message
- * @property ?\Illuminate\Support\Carbon $started_at
- * @property ?\Illuminate\Support\Carbon $completed_at
- * @property ?\Illuminate\Support\Carbon $expires_at
- * @property ?\Illuminate\Support\Carbon $downloaded_at
+ * @property ?Carbon $started_at
+ * @property ?Carbon $completed_at
+ * @property ?Carbon $expires_at
+ * @property ?Carbon $downloaded_at
  */
 class DownloadTask extends Model
 {

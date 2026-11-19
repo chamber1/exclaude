@@ -19,9 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class DownloadController extends Controller
 {
-    public function __construct(private readonly DownloadService $downloads)
-    {
-    }
+    public function __construct(private readonly DownloadService $downloads) {}
 
     /** Link check: video metadata and the qualities available to this visitor. */
     public function inspect(InspectDownloadRequest $request): JsonResponse

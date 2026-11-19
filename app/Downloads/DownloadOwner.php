@@ -25,8 +25,7 @@ final class DownloadOwner
         public readonly ?User $user,
         public readonly ?string $guestId,
         public readonly string $clientHash,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(Request $request): self
     {
