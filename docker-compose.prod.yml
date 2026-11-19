@@ -1,0 +1,162 @@
+# Production stack (single VPS). Usage, updates, backups: docs/DEPLOYMENT.md
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# Differences from docker-compose.yml: code is baked into the images (no bind mounts), MySQL and
+# Redis are not published, Redis has a password, logs are rotated, only nginx is exposed.
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "20m", max-file: "5" }
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: prod
+  image: exclaude-app:${APP_VERSION:-latest}
+  env_file: .env
+  environment:
+    DB_HOST: mysql
+    REDIS_HOST: redis
+  volumes:
+    # Downloads, logs and framework files survive container re-creation; nginx reads downloads.
+    - app_storage:/var/www/html/storage
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
+    image: exclaude-web:${APP_VERSION:-latest}
+    environment:
+      # Substituted into the nginx config template (server_name, certificate paths).
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - app_storage:/var/www/html/storage:ro
+      - ./docker/production/certbot/conf:/etc/letsencrypt:ro
+      - ./docker/production/certbot/www:/var/www/certbot:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/up || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 256M }
+
+  app:
+    <<: *app
+    healthcheck:
+      test: ["CMD", "php", "artisan", "downloads:health", "app"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 1G }
+
+  queue-worker:
+    <<: *app
+    user: www-data
+    command: >-
+      php artisan queue:work redis --queue=downloads,default
+      --tries=2 --timeout=660 --sleep=1 --max-jobs=100 --max-time=3600
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD", "php", "artisan", "downloads:health", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      # Number of parallel downloads = replicas (each needs ~1 CPU and up to ~1.5 GB RAM for ffmpeg).
+      replicas: ${QUEUE_WORKERS:-2}
+      resources:
+        limits: { cpus: "2", memory: 1536M }
+
+  scheduler:
+    <<: *app
+    user: www-data
+    command: php artisan schedule:work
+    healthcheck:
+      test: ["CMD", "php", "artisan", "downloads:health", "scheduler"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 256M }
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 1G }
+
+  redis:
+    image: redis:7.4-alpine
+    command: >-
+      redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+      --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    logging: *logging
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 320M }
+
+  # Certificate renewal (docs/DEPLOYMENT.md, "SSL"). Runs `certbot renew` twice a day.
+  certbot:
+    image: certbot/certbot:v3.0.1
+    volumes:
+      - ./docker/production/certbot/conf:/etc/letsencrypt
+      - ./docker/production/certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  app_storage:
+  mysql_data:
+  redis_data:

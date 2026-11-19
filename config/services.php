@@ -31,8 +31,4 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'yt_dlp' => [
-        'binary' => env('YTDLP_BINARY', '/usr/local/bin/yt-dlp'),
-    ],
-
 ];

@@ -28,8 +28,14 @@ Route::controller(App\Http\Controllers\WebcamController::class)->prefix('webcam'
     Route::delete('/snapshots/{snapshot}', 'destroy')->name('destroy');
 });
 
-Route::controller(App\Http\Controllers\ParserController::class)->prefix('parser')->name('parser.')->group(function () {
-    Route::get('/', 'index')->name('index');
-    Route::post('/', 'download')->middleware('throttle:10,1')->name('download');
-    Route::get('/files/{token}', 'file')->name('file');
+// Downloads page; open to guests (limits per plan, config/downloads.php).
+Route::get('/parser', [App\Http\Controllers\ParserController::class, 'index'])->name('parser.index');
+
+// Download API (queue + status polling), used by the /parser page.
+Route::controller(App\Http\Controllers\DownloadController::class)->prefix('downloads')->name('downloads.')->group(function () {
+    Route::get('/', 'index')->middleware('throttle:downloads-status')->name('index');
+    Route::post('/inspect', 'inspect')->middleware('throttle:downloads-inspect')->name('inspect');
+    Route::post('/', 'store')->middleware('throttle:downloads')->name('store');
+    Route::get('/{task}', 'show')->whereUuid('task')->middleware('throttle:downloads-status')->name('show');
+    Route::get('/{task}/file', 'file')->whereUuid('task')->middleware('signed:relative')->name('file');
 });

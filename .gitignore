@@ -19,3 +19,7 @@ yarn-error.log
 /.vscode
 /docker/nginx/certs
 /.github
+
+/docker/production/certbot/
+/docker/production/backups/
+.env.production

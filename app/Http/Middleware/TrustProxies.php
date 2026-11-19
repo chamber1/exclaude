@@ -14,6 +14,15 @@ class TrustProxies extends Middleware
      */
     protected $proxies;
 
+    public function __construct()
+    {
+        // Comma-separated IPs/CIDRs of a load balancer or CDN in front of nginx, or "*". Empty: trust nobody.
+        $proxies = (string) config('app.trusted_proxies', '');
+        if ($proxies !== '') {
+            $this->proxies = $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies));
+        }
+    }
+
     /**
      * The headers that should be used to detect proxies.
      *

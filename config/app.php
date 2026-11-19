@@ -126,6 +126,9 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
+    // Comma-separated IPs/CIDRs (or "*") of a load balancer / CDN in front of nginx. See TrustProxies.
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Maintenance Mode Driver

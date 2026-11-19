@@ -34,10 +34,11 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('webcam.index') }}">Веб-камера</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('parser.index') }}">Парсер</a>
-                            </li>
                         @endauth
+                        {{-- The downloads page is open to guests too. --}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('parser.index') }}">Парсер</a>
+                        </li>
                     </ul>
 
                     <!-- Right Side Of Navbar -->

@@ -66,9 +66,11 @@ return [
             'driver' => 'redis',
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
-            'block_for' => null,
-            'after_commit' => false,
+            // Must exceed the longest job timeout (DownloadJob: downloads.yt_dlp.timeout + 60), otherwise
+            // a running download would be handed to a second worker.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 900),
+            'block_for' => 5,
+            'after_commit' => true,
         ],
 
     ],

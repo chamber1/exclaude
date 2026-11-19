@@ -74,10 +74,11 @@ return [
         ],
 
         // /parser (YouTube audio/video): requests, yt-dlp runs, results and errors.
-        'parser' => [
+        // Downloads (/parser): tasks, yt-dlp runs and failures, rejections, cleanup.
+        'downloads' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/parser.log'),
-            'level' => env('PARSER_LOG_LEVEL', 'debug'),
+            'path' => storage_path('logs/downloads.log'),
+            'level' => env('DOWNLOADS_LOG_LEVEL', 'info'),
             'days' => 14,
             'replace_placeholders' => true,
         ],

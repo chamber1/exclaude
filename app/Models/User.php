@@ -42,10 +42,16 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'plan_expires_at' => 'datetime',
     ];
 
     public function webcamSnapshots(): HasMany
     {
         return $this->hasMany(WebcamSnapshot::class);
+    }
+
+    public function downloadTasks(): HasMany
+    {
+        return $this->hasMany(DownloadTask::class);
     }
 }
