@@ -38,6 +38,12 @@ class ParserController extends Controller
      */
     private const QUALITIES = ['best', '2160', '1440', '1080', '720', '480', '360'];
 
+    /** Prefix of the stdout line with the video title (stdout also carries yt-dlp's own messages). */
+    private const TITLE_MARKER = 'PARSER_TITLE:';
+
+    /** Shared context for every parser.log entry of the current request. */
+    private array $logContext = [];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -59,24 +65,40 @@ class ParserController extends Controller
      */
     public function download(Request $request): BinaryFileResponse|JsonResponse
     {
-        $data = $request->validate([
-            'type' => ['nullable', 'in:audio,video'],
-            'url' => ['required', 'string', 'max:2048'],
-            'format' => ['required_unless:type,video', 'nullable', 'in:'.implode(',', self::FORMATS)],
-            'bitrate' => ['required_unless:type,video', 'nullable', 'in:'.implode(',', self::BITRATES)],
-            'quality' => ['required_if:type,video', 'nullable', 'in:'.implode(',', self::QUALITIES)],
-        ], [
-            'bitrate.in' => 'Недопустимый битрейт.',
-            'quality.in' => 'Недопустимое качество видео.',
-        ]);
+        // "rid" ties together all log lines of one request.
+        $this->logContext = [
+            'rid' => Str::lower(Str::random(8)),
+            'user_id' => $request->user()->id,
+            'ip' => $request->ip(),
+        ];
+        $params = $request->only(['type', 'format', 'bitrate', 'quality']);
+        $this->log('info', 'request', $params + ['url' => Str::limit((string) $request->input('url'), 300)]);
+
+        try {
+            $data = $request->validate([
+                'type' => ['nullable', 'in:audio,video'],
+                'url' => ['required', 'string', 'max:2048'],
+                'format' => ['required_unless:type,video', 'nullable', 'in:'.implode(',', self::FORMATS)],
+                'bitrate' => ['required_unless:type,video', 'nullable', 'in:'.implode(',', self::BITRATES)],
+                'quality' => ['required_if:type,video', 'nullable', 'in:'.implode(',', self::QUALITIES)],
+            ], [
+                'bitrate.in' => 'Недопустимый битрейт.',
+                'quality.in' => 'Недопустимое качество видео.',
+            ]);
+        } catch (ValidationException $e) {
+            $this->log('notice', 'validation failed', ['errors' => $e->errors()]);
+            throw $e;
+        }
         $isVideo = ($data['type'] ?? 'audio') === 'video';
 
         $videoId = $this->extractVideoId($data['url']);
         if ($videoId === null) {
+            $this->log('notice', 'not a YouTube video URL');
             throw ValidationException::withMessages([
                 'url' => 'Это не похоже на ссылку на ролик YouTube.',
             ]);
         }
+        $this->logContext['video'] = $videoId;
 
         if ($isVideo) {
             $quality = $data['quality'];
@@ -95,6 +117,7 @@ class ParserController extends Controller
                 'path' => $file,
                 'name' => $name,
             ], self::FILE_TTL);
+            $this->log('info', 'video prepared, waiting for download', ['token' => $token, 'name' => $name, 'size' => filesize($file)]);
 
             return response()->json([
                 'url' => route('parser.file', $token),
@@ -114,6 +137,7 @@ class ParserController extends Controller
         ], 'звук');
 
         $name = $this->fileName($title, $bitrate === 'best' ? '' : " ({$bitrate} kbps)", $format);
+        $this->log('info', 'audio sent', ['name' => $name, 'size' => filesize($file)]);
 
         return response()->download($file, $name)->deleteFileAfterSend();
     }
@@ -123,10 +147,24 @@ class ParserController extends Controller
      */
     public function file(Request $request, string $token): BinaryFileResponse
     {
+        $this->logContext = ['user_id' => $request->user()->id, 'ip' => $request->ip(), 'token' => $token];
         $entry = Str::isUuid($token) ? Cache::get('parser:file:'.$token) : null;
 
-        abort_unless($entry && $entry['user_id'] === $request->user()->id && is_file($entry['path']), 404);
+        $denied = match (true) {
+            ! Str::isUuid($token) => 'malformed token',
+            $entry === null => 'unknown, used or expired token',
+            $entry['user_id'] !== $request->user()->id => 'token belongs to user '.$entry['user_id'],
+            ! is_file($entry['path']) => 'file missing on disk',
+            default => null,
+        };
+        if ($denied !== null) {
+            // Someone else's token is worth a closer look; the rest is routine.
+            $this->log(str_starts_with($denied, 'token belongs') ? 'warning' : 'notice', 'file download denied: '.$denied);
+            abort(404);
+        }
+
         Cache::forget('parser:file:'.$token);
+        $this->log('info', 'video sent', ['name' => $entry['name'], 'size' => filesize($entry['path'])]);
 
         return response()->download($entry['path'], $entry['name'])->deleteFileAfterSend();
     }
@@ -157,10 +195,15 @@ class ParserController extends Controller
             ...$args,
             '-o', $base.'.%(ext)s',
             '--no-simulate',
-            '-O', 'after_move:%(title)s',
+            // -O implies --quiet, which would hide messages like "does not pass filter" that errorMessage() needs.
+            '--no-quiet',
+            '-O', 'after_move:'.self::TITLE_MARKER.'%(title)s',
             '--',
             'https://www.youtube.com/watch?v='.$videoId,
         ];
+
+        $this->log('debug', 'yt-dlp start', ['command' => implode(' ', array_map('escapeshellarg', $command))]);
+        $started = microtime(true);
 
         try {
             $result = Process::timeout(self::TIMEOUT)
@@ -171,22 +214,48 @@ class ParserController extends Controller
                     'DENO_DIR' => sys_get_temp_dir().'/deno',
                 ])
                 ->run($command);
-        } catch (\Illuminate\Process\Exceptions\ProcessTimedOutException) {
+        } catch (\Illuminate\Process\Exceptions\ProcessTimedOutException $e) {
             $this->removeFiles($base);
-            throw ValidationException::withMessages(['url' => 'Обработка заняла слишком много времени. Попробуйте ролик покороче или качество пониже.']);
+            $message = 'Обработка заняла слишком много времени. Попробуйте ролик покороче или качество пониже.';
+            $this->log('warning', 'yt-dlp timed out', [
+                'seconds' => round(microtime(true) - $started, 1),
+                'timeout' => self::TIMEOUT,
+                'stderr' => Str::limit($e->result->errorOutput(), 8000),
+                'user_message' => $message,
+            ]);
+
+            throw ValidationException::withMessages(['url' => $message]);
         }
 
+        $seconds = round(microtime(true) - $started, 1);
         $output = $result->output().$result->errorOutput();
         $file = is_file($base.'.'.$ext) ? $base.'.'.$ext : null;
 
         if (! $result->successful() || $file === null) {
             $this->removeFiles($base);
-            Log::warning('yt-dlp failed', ['video' => $videoId, 'ext' => $ext, 'exit' => $result->exitCode(), 'output' => Str::limit($output, 4000)]);
+            $message = $this->errorMessage($output, $result->exitCode(), $what);
+            $this->log('warning', 'yt-dlp failed', [
+                'exit' => $result->exitCode(),
+                'seconds' => $seconds,
+                'reason' => $result->successful() ? 'exit 0 but no .'.$ext.' file (skipped by a filter?)' : 'non-zero exit',
+                'user_message' => $message,
+                'stdout' => Str::limit($result->output(), 8000),
+                'stderr' => Str::limit($result->errorOutput(), 8000),
+            ]);
 
-            throw ValidationException::withMessages(['url' => $this->errorMessage($output, $result->exitCode(), $what)]);
+            throw ValidationException::withMessages(['url' => $message]);
         }
 
-        $title = trim(strtok($result->output(), "\n") ?: '') ?: $videoId;
+        $title = preg_match('/^'.preg_quote(self::TITLE_MARKER, '/').'(.*)$/m', $result->output(), $m)
+            ? (trim($m[1]) ?: $videoId)
+            : $videoId;
+        preg_match_all('/^WARNING:.*$/m', $result->errorOutput(), $warnings);
+        $this->log('info', 'yt-dlp done', [
+            'seconds' => $seconds,
+            'title' => $title,
+            'size' => filesize($file),
+            'warnings' => array_slice($warnings[0], 0, 20),
+        ]);
 
         return [$file, $title];
     }
@@ -250,6 +319,7 @@ class ParserController extends Controller
             'confirm your age' => 'У видео возрастное ограничение, без входа в аккаунт YouTube его не скачать.',
             'not a bot' => 'YouTube временно блокирует запросы с этого сервера (проверка на бота). Попробуйте позже.',
             'Video unavailable' => 'Видео недоступно или удалено.',
+            'video is unavailable' => 'Видео недоступно или удалено.',
             'live event will begin' => 'Трансляция ещё не началась.',
             'members-only' => 'Видео доступно только спонсорам канала.',
             'ffmpeg not found' => 'На сервере не установлен ffmpeg.',
@@ -266,7 +336,12 @@ class ParserController extends Controller
             return 'На сервере не установлен yt-dlp.';
         }
 
-        return "Не удалось скачать {$what} из этого ролика. Подробности записаны в лог.";
+        return "Не удалось скачать {$what} из этого ролика.";
+    }
+
+    private function log(string $level, string $message, array $context = []): void
+    {
+        Log::channel('parser')->log($level, $message, $this->logContext + $context);
     }
 
     private function removeFiles(string $base): void

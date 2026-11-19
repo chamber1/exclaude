@@ -78,6 +78,16 @@ docker exec php_fpm vendor/bin/phpunit tests/Feature/ExampleTest.php
   - Всегда передавайте `--no-mtime`. Без него yt-dlp ставит файлу дату загрузки ролика, и `removeStaleFiles()` (удаляет файлы старше часа) может удалить его во время соседнего запроса.
   - php-fpm запускается с очищенным окружением, поэтому процессу явно передаются `PATH`, `HOME` и `DENO_DIR`. Без `PATH` yt-dlp не найдёт ffmpeg и deno.
   - Таймауты вложены друг в друга: yt-dlp 600 с, затем `set_time_limit` 660 с, затем nginx `fastcgi_read_timeout 660s`. Меняйте их вместе.
-  - Ошибки yt-dlp переводятся в русские сообщения поиском подстроки в `errorMessage()`. Неизвестные ошибки пишутся в лог как `yt-dlp failed`.
+  - Ошибки yt-dlp переводятся в русские сообщения поиском подстроки в `errorMessage()`. Пользователь видит только это сообщение, без отсылок к логу.
+  - `-O` (заголовок ролика) включает у yt-dlp режим `--quiet` и скрывает сообщения вроде «does not pass filter». Поэтому команда запускается с `--no-quiet`, а заголовок ищется в stdout по префиксу `TITLE_MARKER`. Не убирайте `--no-quiet`: без него ошибки «длиннее 60 минут» превращаются в общую.
+  - Лог: отдельный канал `parser` (`config/logging.php`) → `storage/logs/parser-YYYY-MM-DD.log`, хранится 14 дней, уровень задаётся `PARSER_LOG_LEVEL`. Пишется через `$this->log()`. Все записи одного запроса связаны полем `rid` и содержат `user_id`, `ip`, `video`. Что пишется:
+    - `request` — параметры запроса;
+    - `validation failed` / `not a YouTube video URL`;
+    - `yt-dlp start` (debug, полная команда);
+    - `yt-dlp done` (время, заголовок, размер, WARNING-строки);
+    - `yt-dlp failed` (код выхода, причина, сообщение пользователю, stdout/stderr до 8000 символов);
+    - `yt-dlp timed out`;
+    - `audio sent` / `video prepared` / `video sent`;
+    - `file download denied: <причина>` (уровень warning, если токен принадлежит другому пользователю).
   - `yt-dlp`, `ffmpeg` и `deno` встроены в образ php_fpm (`docker/Dockerfile`). Изменение требует `docker compose up -d --build`. Версия yt-dlp намеренно не зафиксирована; обновить его на месте можно командой `docker exec php_fpm yt-dlp -U`.
 - **Миграции.** Есть и `password_resets` (Laravel 9), и `password_reset_tokens` (Laravel 10). `config/auth.php` использует `password_reset_tokens`, так что `password_resets` не используется.
