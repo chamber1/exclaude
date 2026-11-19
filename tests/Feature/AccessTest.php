@@ -21,7 +21,7 @@ class AccessTest extends TestCase
         $this->get('/parser')
             ->assertOk()
             ->assertSee('Без входа: качество до 720p', false)
-            ->assertSee('name="rights"', false);
+            ->assertDontSee('name="rights"', false);
     }
 
     public function test_parser_for_users_has_no_guest_notice(): void

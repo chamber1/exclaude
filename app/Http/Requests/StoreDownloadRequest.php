@@ -29,7 +29,6 @@ class StoreDownloadRequest extends FormRequest
             'format' => ['exclude_unless:type,audio', 'required', Rule::in(config('downloads.formats'))],
             'bitrate' => ['exclude_unless:type,audio', 'required', Rule::in(config('downloads.bitrates'))],
             'quality' => ['exclude_unless:type,video', 'required', Rule::in(config('downloads.qualities'))],
-            'rights' => ['accepted'],
         ];
     }
 
@@ -42,7 +41,6 @@ class StoreDownloadRequest extends FormRequest
             'format.*' => 'Недопустимый формат.',
             'bitrate.*' => 'Недопустимый битрейт.',
             'quality.*' => 'Недопустимое качество видео.',
-            'rights.accepted' => 'Подтвердите, что у вас есть право скачать этот контент.',
         ];
     }
 }

@@ -101,14 +101,6 @@
                                 </div>
                             </fieldset>
 
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" name="rights" id="parser-rights" value="1">
-                                <label class="form-check-label" for="parser-rights">
-                                    Я подтверждаю, что у меня есть право скачать этот контент (я автор, у меня есть разрешение правообладателя или лицензия это допускает).
-                                </label>
-                                <div id="parser-rights-error" class="invalid-feedback"></div>
-                            </div>
-
                             <div class="d-grid d-sm-flex align-items-sm-center gap-2 gap-sm-3">
                                 <button id="parser-submit" type="submit" class="btn btn-primary text-nowrap">
                                     <span id="parser-spinner" class="spinner-border spinner-border-sm me-1 d-none" aria-hidden="true"></span>
@@ -172,7 +164,6 @@ const qualitySelect = $('parser-quality');
 const fields = {
     bitrate: { input: $('parser-bitrate'), error: $('parser-bitrate-error') },
     quality: { input: qualitySelect, error: $('parser-quality-error') },
-    rights: { input: $('parser-rights'), error: $('parser-rights-error') },
 };
 
 let inspected = null;   // { url, info } of the last successfully checked link
@@ -546,7 +537,6 @@ form.querySelectorAll('input[name="type"]').forEach((r) => r.addEventListener('c
 form.querySelectorAll('input[name="format"]').forEach((r) => r.addEventListener('change', updateBitrateHint));
 fields.bitrate.input.addEventListener('change', () => { setFieldErrors(); updateBitrateHint(); });
 qualitySelect.addEventListener('change', () => { setFieldErrors(); updateQualityHint(); });
-fields.rights.input.addEventListener('change', () => setFieldErrors());
 
 updateType();
 updateBitrateHint();

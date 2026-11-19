@@ -28,7 +28,7 @@ class DownloadApiTest extends TestCase
     private function store(array $data = []): \Illuminate\Testing\TestResponse
     {
         return $this->postJson('/downloads', $data + [
-            'url' => self::URL, 'type' => 'audio', 'format' => 'mp3', 'bitrate' => '128', 'rights' => '1',
+            'url' => self::URL, 'type' => 'audio', 'format' => 'mp3', 'bitrate' => '128',
         ]);
     }
 
@@ -139,19 +139,14 @@ class DownloadApiTest extends TestCase
     {
         $this->postJson('/downloads', ['type' => 'audio', 'format' => 'flac', 'bitrate' => '999'])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['url', 'format', 'bitrate', 'rights']);
+            ->assertJsonValidationErrors(['url', 'format', 'bitrate']);
 
-        $this->postJson('/downloads', ['url' => self::URL, 'type' => 'video', 'quality' => '4320', 'rights' => '1'])
+        $this->postJson('/downloads', ['url' => self::URL, 'type' => 'video', 'quality' => '4320'])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['quality'])
             ->assertJsonMissingValidationErrors(['format', 'bitrate']);
 
         $this->assertDatabaseCount('download_tasks', 0);
-    }
-
-    public function test_rights_confirmation_is_required(): void
-    {
-        $this->store(['rights' => null])->assertStatus(422)->assertJsonValidationErrors('rights');
     }
 
     public function test_task_is_created_and_queued(): void
