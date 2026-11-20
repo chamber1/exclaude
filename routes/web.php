@@ -24,16 +24,17 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');
-
+/*
 Route::controller(WebcamController::class)->prefix('webcam')->name('webcam.')->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/snapshots', 'store')->name('store');
     Route::get('/snapshots/{snapshot}', 'show')->name('show');
     Route::delete('/snapshots/{snapshot}', 'destroy')->name('destroy');
 });
+*/
 
 // Downloads page; open to guests (limits per plan, config/downloads.php).
-Route::get('/parser', [ParserController::class, 'index'])->name('parser.index');
+Route::get('/grabber', [ParserController::class, 'index'])->name('parser.index');
 
 // Download API (queue + status polling), used by the /parser page.
 Route::controller(DownloadController::class)->prefix('downloads')->name('downloads.')->group(function () {

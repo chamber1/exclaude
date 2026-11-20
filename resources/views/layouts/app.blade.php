@@ -30,14 +30,16 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Left Side Of Navbar -->
                     <ul class="navbar-nav me-auto">
-                        @auth
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('webcam.index') }}">Веб-камера</a>
-                            </li>
-                        @endauth
+                        @if(false)
+                            @auth
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('webcam.index') }}">Веб-камера</a>
+                                </li>
+                            @endauth
+                        @endif
                         {{-- The downloads page is open to guests too. --}}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('parser.index') }}">Парсер</a>
+                            <a class="nav-link" href="{{ route('parser.index') }}">Граббер</a>
                         </li>
                     </ul>
 
