@@ -4,9 +4,7 @@
 
 ## Обзор
 
-Приложение на Laravel 13 (PHP 8.5). Основа — заготовка аутентификации `laravel/ui` на Bootstrap (вход, регистрация, сброс пароля, подтверждение email) и Sanctum. Две функции:
-- **веб-камера** (`/webcam`, только для вошедших): показывает изображение с камеры, сохраняет снимки и выводит их в галерее;
-- **загрузчик YouTube** (`/parser`, доступен и гостям с лимитами): звук (mp3/m4a, выбор битрейта) или видео (mp4, выбор качества). Скачивает через `yt-dlp` воркер очереди, а не HTTP-запрос.
+Приложение на Laravel 13 (PHP 8.5). Основа — заготовка аутентификации `laravel/ui` на Bootstrap (вход, регистрация, сброс пароля, подтверждение email) и Sanctum. Основная функция — **загрузчик YouTube** (`/parser`, доступен и гостям с лимитами): звук (mp3/m4a, выбор битрейта) или видео (mp4, выбор качества). Скачивает через `yt-dlp` воркер очереди, а не HTTP-запрос.
 
 Документация:
 - `spec.md` — поведение функций, текущее состояние и бэклог. Обновляйте его при любом изменении функции или её поведения;
@@ -43,7 +41,7 @@
 
 Изнутри контейнеров nginx доступен по адресу `http://test2-nginx-1`.
 
-Локальный вход для разработки: `test@test.com` / `password`. Пользователь создан вручную в dev-БД, сидера для него нет.
+Локальный вход для разработки: `test@test.com` / `password`. Его создаёт `TestUserSeeder` (вызывается из `DatabaseSeeder`, работает только в `local`/`testing`): `docker exec php_fpm php artisan db:seed`. Повторный запуск безопасен и восстанавливает пароль.
 
 Git: ветка `main`, remote `origin` на GitHub. Папка `.github` есть на диске (CI на PHP 8.4/8.5), но исключена из репозитория через `.gitignore` и `.dockerignore`.
 
@@ -72,16 +70,10 @@ docker exec php_fpm vendor/bin/phpunit tests/Feature/Downloads/DownloadApiTest.p
 - **Структура Laravel 10 сохранена** и работает в Laravel 13: `app/Http/Kernel.php`, `app/Console/Kernel.php` (расписание), `RouteServiceProvider` (rate limiters), полные конфиги в `config/`. Переход на `bootstrap/app.php` — по желанию (`docs/UPGRADE.md`).
 - **Маршруты** (`routes/web.php`):
   - `Auth::routes()` (laravel/ui), `/`, `/home`;
-  - группа `webcam.*`: middleware `auth` подключается в конструкторе контроллера;
   - `/parser` (только страница);
   - группа `downloads.*` (`DownloadController`): `inspect`, `store`, `index`, `show`, `file` (подписанная ссылка `signed:relative`).
   - `/up` (`HealthController`) — проверка БД, кеша и storage.
 - **Виды.** Blade в `resources/views`, страницы наследуют `layouts/app.blade.php`: он подключает `@vite` и `<meta name="csrf-token">`. В layout нет `@stack`, поэтому JS страницы пишется внутри `@section('content')`.
-- **Веб-камера**: `WebcamController`, модель `WebcamSnapshot` (`User::webcamSnapshots()`), таблица `webcam_snapshots`.
-  - Снимки лежат на **приватном диске `local`** в `storage/app/webcam/{user_id}/` и отдаются только через `webcam.show` с проверкой владельца (`abort_unless`, политик нет), чужим — 404. Не переносите их на диск `public` и не используйте `storage:link`.
-  - Клиент — `<script type="module">`: `getUserMedia`, `fetch` с `X-CSRF-TOKEN`. Нужен безопасный контекст: `https://` или `http://localhost`.
-  - `<video>` скрыт. Цикл `requestAnimationFrame` рисует кадры на `<canvas>`, а снимок делается через `canvas.toBlob()`, поэтому маска попадает в снимок.
-  - Маска клоуна: MediaPipe Face Landmarker импортируется с jsDelivr (версия в `MEDIAPIPE_URL`). `drawClownMask()` рисует её по 468-точечной сетке.
 - **Загрузки** (`app/Downloads/*`, подробно — `docs/ARCHITECTURE.md`):
   - **Поток:**
     1. `POST /downloads/inspect` возвращает метаданные (кешируются на 10 мин) и доступные качества;

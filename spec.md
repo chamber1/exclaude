@@ -24,7 +24,7 @@ Laravel-приложение:
 | Инструменты в образе | yt-dlp 2026.10.26, Deno 2.9.8 (версии закреплены, SHA-256 проверяется), ffmpeg 6.1 (Ubuntu 24.04) |
 
 - Адреса: http://localhost и https://localhost. Для HTTPS используется самоподписанный сертификат, поэтому браузер покажет предупреждение.
-- Тестовый пользователь: `test@test.com` / `password`.
+- Тестовый пользователь: `test@test.com` / `password`. Создаётся командой `php artisan db:seed` (`TestUserSeeder`, только в `local`/`testing`).
 
 ## 3. Функциональность
 
